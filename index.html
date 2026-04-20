@@ -589,7 +589,7 @@ async function startFlight() {
     const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
 
     // Camera sits behind and slightly above the plane
-    const camHeading = Cesium.Math.toRadians(180 - state.heading);
+    const camHeading = Cesium.Math.toRadians(270 - state.heading);
     const camPitch   = Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15);
     const camRange   = Math.min(180 + state.alt * 0.015, 380);
 
