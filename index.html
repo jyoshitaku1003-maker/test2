@@ -205,7 +205,6 @@
 
     .cesium-widget-credits { display: none !important; }
 
-    /* Mobile Controls */
     #mobileControls {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -491,11 +490,13 @@ async function startFlight() {
     state.alt  = Math.max(80, Math.min(45000, state.alt + dVert));
 
     const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
-    viewer.camera.lookAt(pos, new Cesium.HeadingPitchRange(
-      Cesium.Math.toRadians(state.heading + 180),
-      Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15),
-      Math.min(180 + state.alt * 0.015, 380)
-    ));
+
+    // HeadingPitchRange uses CCW from east (standard math), so camera behind plane = 270 - heading
+    const camHeading = Cesium.Math.toRadians(270 - state.heading);
+    const camPitch   = Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15);
+    const camRange   = Math.min(180 + state.alt * 0.015, 380);
+
+    viewer.camera.lookAt(pos, new Cesium.HeadingPitchRange(camHeading, camPitch, camRange));
 
     document.getElementById('altVal').textContent  = Math.round(state.alt).toLocaleString();
     document.getElementById('spdVal').textContent  = Math.round(state.speed * 3.6);
