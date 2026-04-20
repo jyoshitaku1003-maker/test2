@@ -3,496 +3,409 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>株式会社サンプル | トップページ</title>
+  <title>3D フライトシミュレーター</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --primary: #0a3d62;
-      --accent: #1e90ff;
-      --text: #333;
-      --light: #f8f9fa;
-      --gray: #666;
-    }
-
-    html { scroll-behavior: smooth; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-      color: var(--text);
-      line-height: 1.7;
+      background: #020610;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
     }
 
-    /* ========= HEADER ========= */
-    header {
+    #cesiumContainer {
+      width: 100vw;
+      height: 100vh;
+      display: none;
+    }
+
+    #startScreen {
       position: fixed;
-      top: 0; left: 0; right: 0;
-      background: #fff;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 60%, #0d1b3e 0%, #020610 100%);
       z-index: 100;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      padding: 0 40px;
-      justify-content: space-between;
     }
 
-    .logo {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--primary);
-      text-decoration: none;
-      letter-spacing: 0.05em;
-    }
-
-    nav a {
-      margin-left: 32px;
-      text-decoration: none;
-      color: var(--text);
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-
-    nav a:hover { color: var(--accent); }
-
-    .nav-cta {
-      background: var(--accent);
-      color: #fff !important;
-      padding: 8px 20px;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-
-    .nav-cta:hover { background: #0077e6; }
-
-    /* ========= HERO ========= */
-    .hero {
-      margin-top: 64px;
-      background: linear-gradient(135deg, var(--primary) 0%, #1a5276 60%, #2874a6 100%);
-      color: #fff;
-      padding: 100px 40px;
+    .start-content {
       text-align: center;
-    }
-
-    .hero h1 {
-      font-size: clamp(1.8rem, 4vw, 3rem);
-      font-weight: 700;
-      line-height: 1.4;
-      margin-bottom: 24px;
-    }
-
-    .hero p {
-      font-size: clamp(1rem, 2vw, 1.2rem);
-      opacity: 0.9;
-      max-width: 600px;
-      margin: 0 auto 40px;
-    }
-
-    .hero-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-
-    .btn-primary {
-      background: var(--accent);
       color: #fff;
-      padding: 14px 36px;
-      border-radius: 4px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 1rem;
-      transition: background 0.2s;
+      max-width: 440px;
+      padding: 0 24px;
     }
 
-    .btn-primary:hover { background: #0077e6; }
-
-    .btn-outline {
-      border: 2px solid rgba(255,255,255,0.8);
-      color: #fff;
-      padding: 14px 36px;
-      border-radius: 4px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 1rem;
-      transition: background 0.2s;
-    }
-
-    .btn-outline:hover { background: rgba(255,255,255,0.15); }
-
-    /* ========= SECTION COMMON ========= */
-    section { padding: 80px 40px; }
-
-    .section-title {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-
-    .section-title h2 {
-      font-size: clamp(1.4rem, 3vw, 2rem);
-      color: var(--primary);
-      margin-bottom: 12px;
-    }
-
-    .section-title p { color: var(--gray); font-size: 0.95rem; }
-
-    .section-title .line {
-      width: 48px;
-      height: 3px;
-      background: var(--accent);
-      margin: 16px auto 0;
-      border-radius: 2px;
-    }
-
-    /* ========= STATS ========= */
-    .stats {
-      background: var(--primary);
-      color: #fff;
-      padding: 60px 40px;
-    }
-
-    .stats-grid {
-      display: flex;
-      justify-content: center;
-      gap: 60px;
-      flex-wrap: wrap;
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    .stat-num {
-      font-size: 2.8rem;
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    .stat-label { font-size: 0.9rem; opacity: 0.85; margin-top: 4px; }
-
-    /* ========= SERVICES ========= */
-    .services { background: var(--light); }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 28px;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 36px 28px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
-
-    .card-icon {
-      width: 56px;
-      height: 56px;
-      background: #e8f4ff;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.6rem;
-      margin-bottom: 20px;
-    }
-
-    .card h3 { font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; }
-    .card p { color: var(--gray); font-size: 0.9rem; }
-
-    /* ========= ABOUT ========= */
-    .about-inner {
-      display: flex;
-      gap: 60px;
-      align-items: center;
-      max-width: 1000px;
-      margin: 0 auto;
-      flex-wrap: wrap;
-    }
-
-    .about-text { flex: 1; min-width: 280px; }
-    .about-text h2 { font-size: 1.8rem; color: var(--primary); margin-bottom: 20px; }
-    .about-text p { color: var(--gray); margin-bottom: 16px; }
-
-    .about-img {
-      flex: 1;
-      min-width: 280px;
-      background: linear-gradient(135deg, #e8f4ff, #d6eaf8);
-      border-radius: 12px;
-      height: 300px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 5rem;
-    }
-
-    /* ========= NEWS ========= */
-    .news { background: var(--light); }
-
-    .news-list {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    .news-item {
-      display: flex;
-      gap: 24px;
-      padding: 20px 0;
-      border-bottom: 1px solid #e0e0e0;
-      align-items: flex-start;
-    }
-
-    .news-date { color: var(--gray); font-size: 0.85rem; white-space: nowrap; padding-top: 2px; }
-    .news-tag {
-      background: #e8f4ff;
-      color: var(--accent);
-      font-size: 0.75rem;
-      padding: 2px 10px;
-      border-radius: 20px;
-      white-space: nowrap;
-      font-weight: 600;
-    }
-    .news-title { font-size: 0.95rem; color: var(--text); text-decoration: none; }
-    .news-title:hover { color: var(--accent); }
-
-    /* ========= CONTACT ========= */
-    .contact {
-      background: var(--primary);
-      color: #fff;
-      text-align: center;
-    }
-
-    .contact h2 { font-size: 1.8rem; margin-bottom: 16px; }
-    .contact p { opacity: 0.85; margin-bottom: 36px; }
-
-    /* ========= FOOTER ========= */
-    footer {
-      background: #0a1628;
-      color: rgba(255,255,255,0.6);
-      padding: 48px 40px 24px;
-    }
-
-    .footer-inner {
-      display: flex;
-      gap: 40px;
-      flex-wrap: wrap;
-      max-width: 1100px;
-      margin: 0 auto 40px;
-    }
-
-    .footer-brand { flex: 2; min-width: 220px; }
-    .footer-brand .logo { color: #fff; font-size: 1.2rem; display: block; margin-bottom: 12px; }
-    .footer-brand p { font-size: 0.85rem; line-height: 1.8; }
-
-    .footer-links { flex: 1; min-width: 140px; }
-    .footer-links h4 { color: #fff; font-size: 0.9rem; margin-bottom: 16px; }
-    .footer-links a {
+    .plane-icon {
+      font-size: 3.5rem;
       display: block;
-      color: rgba(255,255,255,0.6);
-      text-decoration: none;
-      font-size: 0.85rem;
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(-8deg); }
+      50%       { transform: translateY(-14px) rotate(-3deg); }
+    }
+
+    .start-content h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .start-content .desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 0.88rem;
+      line-height: 1.65;
       margin-bottom: 8px;
-      transition: color 0.2s;
-    }
-    .footer-links a:hover { color: #fff; }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255,255,255,0.1);
-      padding-top: 24px;
-      text-align: center;
-      font-size: 0.8rem;
-      max-width: 1100px;
-      margin: 0 auto;
     }
 
-    /* ========= RESPONSIVE ========= */
-    @media (max-width: 640px) {
-      header { padding: 0 20px; }
-      nav { display: none; }
-      section { padding: 60px 20px; }
-      .hero { padding: 60px 20px; }
-      .stats { padding: 48px 20px; }
-      .stats-grid { gap: 32px; }
-      footer { padding: 40px 20px 20px; }
+    .api-note {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 24px;
+      line-height: 1.5;
     }
+
+    #apiKeyInput {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.07);
+      color: #fff;
+      font-size: 0.93rem;
+      margin-bottom: 10px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    #apiKeyInput::placeholder { color: rgba(255,255,255,0.28); }
+    #apiKeyInput:focus { border-color: #60a5fa; }
+
+    #startBtn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      color: #fff;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+
+    #startBtn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    #startBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    #errorMsg {
+      color: #f87171;
+      font-size: 0.82rem;
+      margin-top: 12px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #020610;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: rgba(255,255,255,0.8);
+      z-index: 50;
+      gap: 18px;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .hud-bar {
+      display: flex;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .hud-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 20px;
+      gap: 3px;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hud-item:last-child { border-right: none; }
+
+    .hud-label {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hud-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #93c5fd;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.75rem;
+      padding: 8px 18px;
+      display: none;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .cesium-widget-credits { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- HEADER -->
-  <header>
-    <a href="#" class="logo">株式会社サンプル</a>
-    <nav>
-      <a href="#services">事業内容</a>
-      <a href="#about">会社概要</a>
-      <a href="#news">ニュース</a>
-      <a href="#contact" class="nav-cta">お問い合わせ</a>
-    </nav>
-  </header>
+<div id="startScreen">
+  <div class="start-content">
+    <span class="plane-icon">✈️</span>
+    <h1>3D フライトシミュレーター</h1>
+    <p class="desc">Google Maps のフォトリアル 3D タイルで東京上空をリアルに飛べます。</p>
+    <p class="api-note">
+      Google Cloud Console で <strong>Map Tiles API</strong> を有効化した<br>API キーが必要です
+    </p>
+    <input type="text" id="apiKeyInput" placeholder="Google Maps API キーを入力...">
+    <button id="startBtn" onclick="startFlight()">✈ フライト開始</button>
+    <div id="errorMsg"></div>
+  </div>
+</div>
 
-  <!-- HERO -->
-  <section class="hero">
-    <h1>テクノロジーで、<br>ビジネスの未来を切り拓く</h1>
-    <p>私たちは最先端のソリューションを提供し、お客様のビジネス成長を力強くサポートします。</p>
-    <div class="hero-btns">
-      <a href="#services" class="btn-primary">サービスを見る</a>
-      <a href="#contact" class="btn-outline">お問い合わせ</a>
+<div id="loading">
+  <div class="spinner"></div>
+  <span>3D タイルを読み込み中...</span>
+</div>
+
+<div id="cesiumContainer"></div>
+
+<div id="hud">
+  <div class="hud-bar">
+    <div class="hud-item">
+      <span class="hud-label">高度</span>
+      <span class="hud-value"><span id="altVal">3000</span> m</span>
     </div>
-  </section>
-
-  <!-- STATS -->
-  <div class="stats">
-    <div class="stats-grid">
-      <div>
-        <div class="stat-num">1,200+</div>
-        <div class="stat-label">導入実績</div>
-      </div>
-      <div>
-        <div class="stat-num">98%</div>
-        <div class="stat-label">顧客満足度</div>
-      </div>
-      <div>
-        <div class="stat-num">15年</div>
-        <div class="stat-label">業界経験</div>
-      </div>
-      <div>
-        <div class="stat-num">50名+</div>
-        <div class="stat-label">専門スタッフ</div>
-      </div>
+    <div class="hud-item">
+      <span class="hud-label">速度</span>
+      <span class="hud-value"><span id="spdVal">540</span> km/h</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">方位</span>
+      <span class="hud-value"><span id="hdgVal">045</span>°</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">仰角</span>
+      <span class="hud-value"><span id="pitchVal">+0</span>°</span>
     </div>
   </div>
+</div>
 
-  <!-- SERVICES -->
-  <section class="services" id="services">
-    <div class="section-title">
-      <h2>事業内容</h2>
-      <p>お客様のニーズに合わせた多様なサービスを提供しています</p>
-      <div class="line"></div>
-    </div>
-    <div class="cards">
-      <div class="card">
-        <div class="card-icon">💻</div>
-        <h3>システム開発</h3>
-        <p>業務効率化・DX推進を目的としたWebシステム・業務アプリケーションの企画・設計・開発を行います。</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">☁️</div>
-        <h3>クラウド導入支援</h3>
-        <p>AWS・Azure・GCPを活用したクラウド移行から運用まで、一貫してサポートいたします。</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📊</div>
-        <h3>データ分析・AI</h3>
-        <p>蓄積されたデータを活用し、ビジネス課題の解決と意思決定の高度化を支援します。</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🔒</div>
-        <h3>セキュリティ対策</h3>
-        <p>脆弱性診断からセキュリティポリシーの策定まで、企業の情報資産を守ります。</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📱</div>
-        <h3>モバイルアプリ開発</h3>
-        <p>iOS・Android両対応のネイティブ・クロスプラットフォームアプリを開発します。</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🤝</div>
-        <h3>ITコンサルティング</h3>
-        <p>経営課題とIT戦略を結びつけ、最適なデジタル変革のロードマップをご提案します。</p>
-      </div>
-    </div>
-  </section>
+<div id="controls">
+  ←→ : 旋回 &nbsp;|&nbsp; ↑ : 上昇 &nbsp;|&nbsp; ↓ : 降下 &nbsp;|&nbsp; E / Q : 加速 / 減速
+</div>
 
-  <!-- ABOUT -->
-  <section id="about">
-    <div class="about-inner">
-      <div class="about-img">🏢</div>
-      <div class="about-text">
-        <h2>私たちについて</h2>
-        <p>株式会社サンプルは2010年の創業以来、「テクノロジーで社会に価値を」という理念のもと、幅広い業界のお客様に対してITソリューションを提供してきました。</p>
-        <p>豊富な経験と高い技術力を持つ専門家チームが、お客様の課題に真摯に向き合い、最適な解決策をご提案します。</p>
-        <p>私たちは単なるシステム開発会社ではなく、お客様のビジネスパートナーとして、長期的な関係を大切にしています。</p>
-        <a href="#contact" class="btn-primary" style="display:inline-block;margin-top:16px;">詳しく見る</a>
-      </div>
-    </div>
-  </section>
+<script>
+async function startFlight() {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const errEl  = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
 
-  <!-- NEWS -->
-  <section class="news" id="news">
-    <div class="section-title">
-      <h2>ニュース</h2>
-      <p>最新のお知らせ・プレスリリース</p>
-      <div class="line"></div>
-    </div>
-    <div class="news-list">
-      <div class="news-item">
-        <span class="news-date">2026.04.15</span>
-        <span class="news-tag">プレスリリース</span>
-        <a href="#" class="news-title">新サービス「AIデータ分析プラットフォーム」の提供を開始しました</a>
-      </div>
-      <div class="news-item">
-        <span class="news-date">2026.03.28</span>
-        <span class="news-tag">お知らせ</span>
-        <a href="#" class="news-title">2026年度の新卒採用情報を公開しました</a>
-      </div>
-      <div class="news-item">
-        <span class="news-date">2026.03.10</span>
-        <span class="news-tag">実績</span>
-        <a href="#" class="news-title">大手製造業A社の基幹システム刷新プロジェクトが稼働開始</a>
-      </div>
-      <div class="news-item">
-        <span class="news-date">2026.02.20</span>
-        <span class="news-tag">イベント</span>
-        <a href="#" class="news-title">DX推進セミナー「2026年のIT戦略」を開催します（参加無料）</a>
-      </div>
-      <div class="news-item">
-        <span class="news-date">2026.01.15</span>
-        <span class="news-tag">お知らせ</span>
-        <a href="#" class="news-title">ISO 27001（情報セキュリティ）認証を取得しました</a>
-      </div>
-    </div>
-  </section>
+  if (!apiKey) {
+    errEl.textContent = 'APIキーを入力してください。';
+    errEl.style.display = 'block';
+    return;
+  }
 
-  <!-- CONTACT -->
-  <section class="contact" id="contact">
-    <h2>お問い合わせ</h2>
-    <p>ご質問・ご相談はお気軽にお問い合わせください。<br>担当者より2営業日以内にご連絡いたします。</p>
-    <a href="mailto:info@example.co.jp" class="btn-primary">メールで問い合わせる</a>
-  </section>
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '読み込み中...';
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <a href="#" class="logo">株式会社サンプル</a>
-        <p>〒100-0001<br>東京都千代田区千代田1-1-1<br>サンプルビル8F<br>TEL: 03-0000-0000</p>
-      </div>
-      <div class="footer-links">
-        <h4>サービス</h4>
-        <a href="#">システム開発</a>
-        <a href="#">クラウド導入支援</a>
-        <a href="#">データ分析・AI</a>
-        <a href="#">セキュリティ対策</a>
-      </div>
-      <div class="footer-links">
-        <h4>企業情報</h4>
-        <a href="#">会社概要</a>
-        <a href="#">採用情報</a>
-        <a href="#">ニュース</a>
-        <a href="#">お問い合わせ</a>
-      </div>
-      <div class="footer-links">
-        <h4>ポリシー</h4>
-        <a href="#">プライバシーポリシー</a>
-        <a href="#">情報セキュリティ方針</a>
-        <a href="#">サイトマップ</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      &copy; 2026 株式会社サンプル All Rights Reserved.
-    </div>
-  </footer>
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('startScreen').style.display = 'none';
 
+  Cesium.GoogleMaps.defaultApiKey = apiKey;
+
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    globe:                false,
+    skyBox:               false,
+    skyAtmosphere:        false,
+    animation:            false,
+    baseLayerPicker:      false,
+    geocoder:             false,
+    homeButton:           false,
+    sceneModePicker:      false,
+    navigationHelpButton: false,
+    timeline:             false,
+    fullscreenButton:     false,
+    infoBox:              false,
+    selectionIndicator:   false,
+  });
+
+  const ctrl = viewer.scene.screenSpaceCameraController;
+  ctrl.enableRotate = ctrl.enableZoom = ctrl.enablePan =
+  ctrl.enableTilt   = ctrl.enableLook = false;
+
+  viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#a8c8f0');
+
+  let tileset;
+  try {
+    tileset = await Cesium.createGooglePhotorealistic3DTileset();
+    viewer.scene.primitives.add(tileset);
+  } catch (e) {
+    document.getElementById('loading').style.display  = 'none';
+    document.getElementById('startScreen').style.display = 'flex';
+    btn.disabled    = false;
+    btn.textContent = '✈ フライト開始';
+    errEl.textContent = 'APIキーが無効か、Map Tiles API が有効になっていません。';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('cesiumContainer').style.display = 'block';
+  document.getElementById('loading').style.display  = 'none';
+  document.getElementById('hud').style.display      = 'flex';
+  document.getElementById('controls').style.display = 'block';
+
+  const state = {
+    lon: 139.7454, lat: 35.6586, alt: 3000,
+    heading: 45, pitch: 0, speed: 150,
+  };
+
+  function makePosCb() {
+    return new Cesium.CallbackProperty(
+      () => Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt), false);
+  }
+
+  function makeOrientCb() {
+    return new Cesium.CallbackProperty(() => {
+      const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
+      return Cesium.Transforms.headingPitchRollQuaternion(
+        pos,
+        new Cesium.HeadingPitchRoll(
+          Cesium.Math.toRadians(state.heading),
+          Cesium.Math.toRadians(state.pitch),
+          0
+        )
+      );
+    }, false);
+  }
+
+  viewer.entities.add({
+    position: makePosCb(), orientation: makeOrientCb(),
+    box: { dimensions: new Cesium.Cartesian3(6, 48, 5), material: Cesium.Color.WHITE }
+  });
+  viewer.entities.add({
+    position: makePosCb(), orientation: makeOrientCb(),
+    box: { dimensions: new Cesium.Cartesian3(58, 9, 1.5), material: Cesium.Color.fromCssColorString('#e0e8ff') }
+  });
+  viewer.entities.add({
+    position: makePosCb(), orientation: makeOrientCb(),
+    box: { dimensions: new Cesium.Cartesian3(1.5, 10, 13), material: Cesium.Color.WHITE }
+  });
+
+  const keys = {};
+  document.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  });
+  document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+  let lastTime = performance.now();
+
+  viewer.scene.preUpdate.addEventListener(() => {
+    const now = performance.now();
+    const dt  = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime  = now;
+
+    if (keys['ArrowLeft']  || keys['KeyA']) state.heading -= 50 * dt;
+    if (keys['ArrowRight'] || keys['KeyD']) state.heading += 50 * dt;
+    if (keys['ArrowUp']    || keys['KeyW']) state.pitch = Math.min(state.pitch + 35 * dt, 50);
+    if (keys['ArrowDown']  || keys['KeyS']) state.pitch = Math.max(state.pitch - 35 * dt, -50);
+    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'])
+      state.speed = Math.min(state.speed + 40 * dt, 350);
+    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'])
+      state.speed = Math.max(state.speed - 40 * dt, 30);
+
+    if (!keys['ArrowUp'] && !keys['KeyW'] && !keys['ArrowDown'] && !keys['KeyS']) {
+      state.pitch *= Math.pow(0.05, dt);
+      if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
+    }
+
+    state.heading = ((state.heading % 360) + 360) % 360;
+
+    const hRad = Cesium.Math.toRadians(state.heading);
+    const pRad = Cesium.Math.toRadians(state.pitch);
+    const dHoriz = state.speed * dt * Math.cos(pRad);
+    const dVert  = state.speed * dt * Math.sin(pRad);
+
+    state.lon += dHoriz * Math.sin(hRad) / (111320 * Math.cos(Cesium.Math.toRadians(state.lat)));
+    state.lat += dHoriz * Math.cos(hRad) / 111320;
+    state.alt  = Math.max(80, Math.min(45000, state.alt + dVert));
+
+    const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
+    viewer.camera.lookAt(pos, new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(state.heading + 180),
+      Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15),
+      Math.min(180 + state.alt * 0.015, 380)
+    ));
+
+    document.getElementById('altVal').textContent  = Math.round(state.alt).toLocaleString();
+    document.getElementById('spdVal').textContent  = Math.round(state.speed * 3.6);
+    document.getElementById('hdgVal').textContent  = String(Math.round(state.heading)).padStart(3, '0');
+    const p = Math.round(state.pitch);
+    document.getElementById('pitchVal').textContent = (p >= 0 ? '+' : '') + p;
+  });
+}
+</script>
 </body>
 </html>
