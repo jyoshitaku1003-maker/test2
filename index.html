@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D フライトシミュレーター</title>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
@@ -212,6 +212,76 @@
 
     /* Cesium credit override */
     .cesium-widget-credits { display: none !important; }
+
+    /* ── Mobile Controls ── */
+    #mobileControls {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 200px;
+      display: none;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Joystick – bottom left */
+    #joystickZone {
+      position: absolute;
+      bottom: 20px; left: 20px;
+      width: 140px; height: 140px;
+      pointer-events: all;
+      touch-action: none;
+    }
+
+    #joystickBase {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+
+    #joystickThumb {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: rgba(96,165,250,0.8);
+      border: 2px solid rgba(255,255,255,0.5);
+      position: absolute;
+      transition: none;
+      will-change: transform;
+    }
+
+    /* Speed buttons – bottom right */
+    #speedBtns {
+      position: absolute;
+      bottom: 28px; right: 24px;
+      display: flex; flex-direction: column; gap: 12px;
+      pointer-events: all;
+    }
+
+    .spd-btn {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 1.6rem;
+      font-weight: 300;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .spd-btn:active { background: rgba(96,165,250,0.4); }
+
+    /* show on touch devices */
+    @media (pointer: coarse) {
+      #mobileControls { display: block; }
+      #controls { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -265,6 +335,19 @@
 <!-- Controls hint -->
 <div id="controls">
   ←→ : 旋回 &nbsp;|&nbsp; ↑ : 上昇 &nbsp;|&nbsp; ↓ : 降下 &nbsp;|&nbsp; E / Q : 加速 / 減速
+</div>
+
+<!-- Mobile Controls -->
+<div id="mobileControls">
+  <div id="joystickZone">
+    <div id="joystickBase">
+      <div id="joystickThumb"></div>
+    </div>
+  </div>
+  <div id="speedBtns">
+    <button class="spd-btn" id="btnSpeedUp">＋</button>
+    <button class="spd-btn" id="btnSpeedDown">－</button>
+  </div>
 </div>
 
 <script>
@@ -402,6 +485,51 @@ async function startFlight() {
   });
   document.addEventListener('keyup', e => { keys[e.code] = false; });
 
+  // ── Touch / Joystick ──
+  const joy = { dx: 0, dy: 0, active: false };
+  const touch = { speedUp: false, speedDown: false };
+  const JOYSTICK_RADIUS = 44; // max thumb travel px
+
+  const joyZone  = document.getElementById('joystickZone');
+  const joyThumb = document.getElementById('joystickThumb');
+
+  function joyMove(cx, cy) {
+    const rect = joyZone.getBoundingClientRect();
+    const ox = cx - (rect.left + rect.width  / 2);
+    const oy = cy - (rect.top  + rect.height / 2);
+    const dist = Math.sqrt(ox*ox + oy*oy);
+    const scale = dist > JOYSTICK_RADIUS ? JOYSTICK_RADIUS / dist : 1;
+    joy.dx = (ox * scale) / JOYSTICK_RADIUS;
+    joy.dy = (oy * scale) / JOYSTICK_RADIUS;
+    joyThumb.style.transform =
+      `translate(${ox * scale}px, ${oy * scale}px)`;
+  }
+
+  joyZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    joy.active = true;
+    joyMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+
+  joyZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    joyMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+
+  joyZone.addEventListener('touchend', e => {
+    e.preventDefault();
+    joy.active = false; joy.dx = 0; joy.dy = 0;
+    joyThumb.style.transform = 'translate(0,0)';
+  }, { passive: false });
+
+  const btnUp   = document.getElementById('btnSpeedUp');
+  const btnDown = document.getElementById('btnSpeedDown');
+
+  btnUp.addEventListener('touchstart',   e => { e.preventDefault(); touch.speedUp   = true;  }, { passive: false });
+  btnUp.addEventListener('touchend',     e => { e.preventDefault(); touch.speedUp   = false; }, { passive: false });
+  btnDown.addEventListener('touchstart', e => { e.preventDefault(); touch.speedDown = true;  }, { passive: false });
+  btnDown.addEventListener('touchend',   e => { e.preventDefault(); touch.speedDown = false; }, { passive: false });
+
   // ── Animation loop ──
   let lastTime = performance.now();
 
@@ -414,17 +542,26 @@ async function startFlight() {
     const PTCH  = 35;   // deg/s
     const ACCEL = 40;   // m/s²
 
+    // Keyboard
     if (keys['ArrowLeft']  || keys['KeyA']) state.heading -= TURN * dt;
     if (keys['ArrowRight'] || keys['KeyD']) state.heading += TURN * dt;
     if (keys['ArrowUp']    || keys['KeyW']) state.pitch = Math.min(state.pitch + PTCH * dt, 50);
     if (keys['ArrowDown']  || keys['KeyS']) state.pitch = Math.max(state.pitch - PTCH * dt, -50);
-    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'])
+    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp)
       state.speed = Math.min(state.speed + ACCEL * dt, 350);
-    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'])
+    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown)
       state.speed = Math.max(state.speed - ACCEL * dt, 30);
 
-    // Auto-level pitch when no pitch input
-    if (!keys['ArrowUp'] && !keys['KeyW'] && !keys['ArrowDown'] && !keys['KeyS']) {
+    // Joystick (mobile)
+    if (joy.active) {
+      state.heading += TURN * dt * joy.dx;
+      const pitchInput = -joy.dy; // screen-up = nose-up
+      state.pitch = Math.max(-50, Math.min(50, state.pitch + PTCH * dt * pitchInput));
+    }
+
+    // Auto-level pitch when no input
+    const pitchInputActive = keys['ArrowUp'] || keys['KeyW'] || keys['ArrowDown'] || keys['KeyS'] || joy.active;
+    if (!pitchInputActive) {
       state.pitch *= Math.pow(0.05, dt);
       if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
     }
