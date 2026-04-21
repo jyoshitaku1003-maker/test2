@@ -8,74 +8,342 @@
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #020610; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; height: 100vh; }
-    #cesiumContainer { width: 100vw; height: 100vh; display: none; }
-    #startScreen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 60%, #0d1b3e 0%, #020610 100%); z-index: 100; }
-    .start-content { text-align: center; color: #fff; max-width: 440px; padding: 0 24px; }
-    .plane-icon { font-size: 3.5rem; display: block; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
-    @keyframes float { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-14px) rotate(-3deg); } }
-    .start-content h1 { font-size: 1.9rem; font-weight: 700; margin-bottom: 10px; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .start-content .desc { color: rgba(255,255,255,0.55); font-size: 0.88rem; line-height: 1.65; margin-bottom: 8px; }
-    .api-note { font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-bottom: 24px; line-height: 1.5; }
-    #apiKeyInput { width: 100%; padding: 13px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.07); color: #fff; font-size: 0.93rem; margin-bottom: 10px; outline: none; transition: border 0.2s; }
+
+    body {
+      background: #020610;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #cesiumContainer {
+      width: 100vw;
+      height: 100vh;
+      display: none;
+    }
+
+    /* ── Start Screen ── */
+    #startScreen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 60%, #0d1b3e 0%, #020610 100%);
+      z-index: 100;
+    }
+
+    .start-content {
+      text-align: center;
+      color: #fff;
+      max-width: 440px;
+      padding: 0 24px;
+    }
+
+    .plane-icon {
+      font-size: 3.5rem;
+      display: block;
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(-8deg); }
+      50%       { transform: translateY(-14px) rotate(-3deg); }
+    }
+
+    .start-content h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .start-content .desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 0.88rem;
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+
+    .api-note {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .api-note a { color: #60a5fa; }
+
+    #apiKeyInput {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.07);
+      color: #fff;
+      font-size: 0.93rem;
+      margin-bottom: 10px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
     #apiKeyInput::placeholder { color: rgba(255,255,255,0.28); }
     #apiKeyInput:focus { border-color: #60a5fa; }
-    #startBtn { width: 100%; padding: 13px; border-radius: 8px; border: none; background: linear-gradient(135deg, #3b82f6, #7c3aed); color: #fff; font-size: 0.97rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.02em; }
+
+    #startBtn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      color: #fff;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+
     #startBtn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
     #startBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-    #errorMsg { color: #f87171; font-size: 0.82rem; margin-top: 12px; display: none; line-height: 1.5; }
-    #loading { position: fixed; inset: 0; background: #020610; display: none; align-items: center; justify-content: center; flex-direction: column; color: rgba(255,255,255,0.8); z-index: 50; gap: 18px; font-size: 0.9rem; }
-    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.75s linear infinite; }
+
+    #errorMsg {
+      color: #f87171;
+      font-size: 0.82rem;
+      margin-top: 12px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    /* ── Loading ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #020610;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: rgba(255,255,255,0.8);
+      z-index: 50;
+      gap: 18px;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
     @keyframes spin { to { transform: rotate(360deg); } }
-    #hud { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: none; z-index: 10; pointer-events: none; }
-    .hud-bar { display: flex; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; }
-    .hud-item { display: flex; flex-direction: column; align-items: center; padding: 10px 20px; gap: 3px; border-right: 1px solid rgba(255,255,255,0.08); }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .hud-bar {
+      display: flex;
+      gap: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .hud-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 20px;
+      gap: 3px;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
     .hud-item:last-child { border-right: none; }
-    .hud-label { font-size: 0.65rem; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; }
-    .hud-value { font-size: 1.05rem; font-weight: 700; color: #93c5fd; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    #controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.6); font-size: 0.75rem; padding: 8px 18px; display: none; white-space: nowrap; z-index: 10; pointer-events: none; }
+
+    .hud-label {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hud-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #93c5fd;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* ── Controls ── */
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.75rem;
+      padding: 8px 18px;
+      display: none;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* Cesium credit override */
     .cesium-widget-credits { display: none !important; }
-    #mobileControls { position: fixed; bottom: 0; left: 0; right: 0; height: 200px; display: none; pointer-events: none; z-index: 10; }
-    #joystickZone { position: absolute; bottom: 20px; left: 20px; width: 140px; height: 140px; pointer-events: all; touch-action: none; }
-    #joystickBase { width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; position: relative; }
-    #joystickThumb { width: 52px; height: 52px; border-radius: 50%; background: rgba(96,165,250,0.8); border: 2px solid rgba(255,255,255,0.5); position: absolute; transition: none; will-change: transform; }
-    #speedBtns { position: absolute; bottom: 28px; right: 24px; display: flex; flex-direction: column; gap: 12px; pointer-events: all; }
-    .spd-btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #fff; font-size: 1.6rem; font-weight: 300; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+    /* ── Mobile Controls ── */
+    #mobileControls {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 200px;
+      display: none;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Joystick – bottom left */
+    #joystickZone {
+      position: absolute;
+      bottom: 20px; left: 20px;
+      width: 140px; height: 140px;
+      pointer-events: all;
+      touch-action: none;
+    }
+
+    #joystickBase {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+
+    #joystickThumb {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: rgba(96,165,250,0.8);
+      border: 2px solid rgba(255,255,255,0.5);
+      position: absolute;
+      transition: none;
+      will-change: transform;
+    }
+
+    /* Speed buttons – bottom right */
+    #speedBtns {
+      position: absolute;
+      bottom: 28px; right: 24px;
+      display: flex; flex-direction: column; gap: 12px;
+      pointer-events: all;
+    }
+
+    .spd-btn {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 1.6rem;
+      font-weight: 300;
+      line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
     .spd-btn:active { background: rgba(96,165,250,0.4); }
-    @media (pointer: coarse) { #mobileControls { display: block; } #controls { display: none !important; } }
+
+    /* show on touch devices */
+    @media (pointer: coarse) {
+      #mobileControls { display: block; }
+      #controls { display: none !important; }
+    }
   </style>
 </head>
 <body>
 
+<!-- Start Screen -->
 <div id="startScreen">
   <div class="start-content">
     <span class="plane-icon">✈️</span>
     <h1>3D フライトシミュレーター</h1>
     <p class="desc">Google Maps のフォトリアル 3D タイルで東京上空をリアルに飛べます。</p>
-    <p class="api-note">Google Cloud Console で <strong>Map Tiles API</strong> を有効化した<br>API キーが必要です</p>
+    <p class="api-note">
+      Google Cloud Console で <strong>Map Tiles API</strong> を有効化した<br>API キーが必要です
+    </p>
     <input type="text" id="apiKeyInput" placeholder="Google Maps API キーを入力...">
     <button id="startBtn" onclick="startFlight()">✈ フライト開始</button>
     <div id="errorMsg"></div>
   </div>
 </div>
 
-<div id="loading"><div class="spinner"></div><span>3D タイルを読み込み中...</span></div>
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <span>3D タイルを読み込み中...</span>
+</div>
 
+<!-- Cesium -->
 <div id="cesiumContainer"></div>
 
+<!-- HUD -->
 <div id="hud">
   <div class="hud-bar">
-    <div class="hud-item"><span class="hud-label">高度</span><span class="hud-value"><span id="altVal">3000</span> m</span></div>
-    <div class="hud-item"><span class="hud-label">速度</span><span class="hud-value"><span id="spdVal">540</span> km/h</span></div>
-    <div class="hud-item"><span class="hud-label">方位</span><span class="hud-value"><span id="hdgVal">045</span>°</span></div>
-    <div class="hud-item"><span class="hud-label">仰角</span><span class="hud-value"><span id="pitchVal">+0</span>°</span></div>
+    <div class="hud-item">
+      <span class="hud-label">高度</span>
+      <span class="hud-value"><span id="altVal">3000</span> m</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">速度</span>
+      <span class="hud-value"><span id="spdVal">540</span> km/h</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">方位</span>
+      <span class="hud-value"><span id="hdgVal">045</span>°</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">仰角</span>
+      <span class="hud-value"><span id="pitchVal">+0</span>°</span>
+    </div>
   </div>
 </div>
 
-<div id="controls">←→ : 旋回 &nbsp;|&nbsp; ↑ : 上昇 &nbsp;|&nbsp; ↓ : 降下 &nbsp;|&nbsp; E / Q : 加速 / 減速</div>
+<!-- Controls hint -->
+<div id="controls">
+  ←→ : 旋回 &nbsp;|&nbsp; ↑ : 上昇 &nbsp;|&nbsp; ↓ : 降下 &nbsp;|&nbsp; E / Q : 加速 / 減速
+</div>
 
+<!-- Mobile Controls -->
 <div id="mobileControls">
-  <div id="joystickZone"><div id="joystickBase"><div id="joystickThumb"></div></div></div>
+  <div id="joystickZone">
+    <div id="joystickBase">
+      <div id="joystickThumb"></div>
+    </div>
+  </div>
   <div id="speedBtns">
     <button class="spd-btn" id="btnSpeedUp">＋</button>
     <button class="spd-btn" id="btnSpeedDown">－</button>
@@ -87,130 +355,247 @@ async function startFlight() {
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   const errEl  = document.getElementById('errorMsg');
   errEl.style.display = 'none';
-  if (!apiKey) { errEl.textContent = 'APIキーを入力してください。'; errEl.style.display = 'block'; return; }
+
+  if (!apiKey) {
+    errEl.textContent = 'APIキーを入力してください。';
+    errEl.style.display = 'block';
+    return;
+  }
 
   const btn = document.getElementById('startBtn');
-  btn.disabled = true; btn.textContent = '読み込み中...';
+  btn.disabled = true;
+  btn.textContent = '読み込み中...';
+
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('startScreen').style.display = 'none';
 
+  // ── Cesium viewer ──
   Cesium.GoogleMaps.defaultApiKey = apiKey;
+
   const viewer = new Cesium.Viewer('cesiumContainer', {
-    globe: false, skyBox: false, skyAtmosphere: false, animation: false,
-    baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false,
-    navigationHelpButton: false, timeline: false, fullscreenButton: false, infoBox: false, selectionIndicator: false,
+    globe:                  false,
+    skyBox:                 false,
+    skyAtmosphere:          false,
+    animation:              false,
+    baseLayerPicker:        false,
+    geocoder:               false,
+    homeButton:             false,
+    sceneModePicker:        false,
+    navigationHelpButton:   false,
+    timeline:               false,
+    fullscreenButton:       false,
+    infoBox:                false,
+    selectionIndicator:     false,
   });
+
+  // Disable default camera controls — we drive it ourselves
   const ctrl = viewer.scene.screenSpaceCameraController;
-  ctrl.enableRotate = ctrl.enableZoom = ctrl.enablePan = ctrl.enableTilt = ctrl.enableLook = false;
+  ctrl.enableRotate = ctrl.enableZoom = ctrl.enablePan =
+  ctrl.enableTilt   = ctrl.enableLook = false;
+
+  // Background sky colour
   viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#a8c8f0');
 
+  // ── Google Photorealistic 3D Tiles ──
   let tileset;
   try {
     tileset = await Cesium.createGooglePhotorealistic3DTileset();
     viewer.scene.primitives.add(tileset);
   } catch (e) {
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('loading').style.display  = 'none';
     document.getElementById('startScreen').style.display = 'flex';
-    btn.disabled = false; btn.textContent = '✈ フライト開始';
-    errEl.textContent = 'APIキーが無効か、Map Tiles API が有効になっていません。'; errEl.style.display = 'block';
+    btn.disabled    = false;
+    btn.textContent = '✈ フライト開始';
+    errEl.textContent = 'APIキーが無効か、Map Tiles API が有効になっていません。';
+    errEl.style.display = 'block';
     return;
   }
 
+  // ── Show UI ──
   document.getElementById('cesiumContainer').style.display = 'block';
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('loading').style.display  = 'none';
+  document.getElementById('hud').style.display      = 'flex';
   document.getElementById('controls').style.display = 'block';
 
-  const state = { lon: 139.7454, lat: 35.6586, alt: 3000, heading: 45, pitch: 0, speed: 150 };
+  // ── Flight state (Tokyo, 3 km up, heading NE) ──
+  const state = {
+    lon:     139.7454,  // near Tokyo Tower
+    lat:     35.6586,
+    alt:     3000,      // metres
+    heading: 45,        // degrees (0 = north)
+    pitch:   0,         // degrees (positive = nose up)
+    speed:   150,       // m/s
+  };
 
+  // ── Plane entity (3 boxes: fuselage / wings / tail) ──
   function makePosCb() {
-    return new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt), false);
+    return new Cesium.CallbackProperty(
+      () => Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt), false);
   }
+
   function makeOrientCb() {
     return new Cesium.CallbackProperty(() => {
       const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
-      return Cesium.Transforms.headingPitchRollQuaternion(pos,
-        new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(state.heading), Cesium.Math.toRadians(state.pitch), 0));
+      return Cesium.Transforms.headingPitchRollQuaternion(
+        pos,
+        new Cesium.HeadingPitchRoll(
+          Cesium.Math.toRadians(state.heading),
+          Cesium.Math.toRadians(state.pitch),
+          0
+        )
+      );
     }, false);
   }
 
-  viewer.entities.add({ position: makePosCb(), orientation: makeOrientCb(), box: { dimensions: new Cesium.Cartesian3(6, 48, 5), material: Cesium.Color.WHITE } });
-  viewer.entities.add({ position: makePosCb(), orientation: makeOrientCb(), box: { dimensions: new Cesium.Cartesian3(58, 9, 1.5), material: Cesium.Color.fromCssColorString('#e0e8ff') } });
-  viewer.entities.add({ position: makePosCb(), orientation: makeOrientCb(), box: { dimensions: new Cesium.Cartesian3(1.5, 10, 13), material: Cesium.Color.WHITE } });
+  // Fuselage
+  viewer.entities.add({
+    position:    makePosCb(),
+    orientation: makeOrientCb(),
+    box: {
+      dimensions: new Cesium.Cartesian3(6, 48, 5),
+      material:   Cesium.Color.WHITE,
+    }
+  });
 
+  // Wings
+  viewer.entities.add({
+    position:    makePosCb(),
+    orientation: makeOrientCb(),
+    box: {
+      dimensions: new Cesium.Cartesian3(58, 9, 1.5),
+      material:   Cesium.Color.fromCssColorString('#e0e8ff'),
+    }
+  });
+
+  // Vertical stabiliser (tail fin)
+  viewer.entities.add({
+    position:    makePosCb(),
+    orientation: makeOrientCb(),
+    box: {
+      dimensions: new Cesium.Cartesian3(1.5, 10, 13),
+      material:   Cesium.Color.WHITE,
+    }
+  });
+
+  // ── Keyboard ──
   const keys = {};
-  document.addEventListener('keydown', e => { keys[e.code] = true; if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
+  document.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  });
   document.addEventListener('keyup', e => { keys[e.code] = false; });
 
+  // ── Touch / Joystick ──
   const joy = { dx: 0, dy: 0, active: false };
   const touch = { speedUp: false, speedDown: false };
-  const JOYSTICK_RADIUS = 44;
-  const joyZone = document.getElementById('joystickZone');
+  const JOYSTICK_RADIUS = 44; // max thumb travel px
+
+  const joyZone  = document.getElementById('joystickZone');
   const joyThumb = document.getElementById('joystickThumb');
 
   function joyMove(cx, cy) {
     const rect = joyZone.getBoundingClientRect();
-    const ox = cx - (rect.left + rect.width / 2);
-    const oy = cy - (rect.top + rect.height / 2);
+    const ox = cx - (rect.left + rect.width  / 2);
+    const oy = cy - (rect.top  + rect.height / 2);
     const dist = Math.sqrt(ox*ox + oy*oy);
     const scale = dist > JOYSTICK_RADIUS ? JOYSTICK_RADIUS / dist : 1;
     joy.dx = (ox * scale) / JOYSTICK_RADIUS;
     joy.dy = (oy * scale) / JOYSTICK_RADIUS;
-    joyThumb.style.transform = `translate(${ox * scale}px, ${oy * scale}px)`;
+    joyThumb.style.transform =
+      `translate(${ox * scale}px, ${oy * scale}px)`;
   }
 
-  joyZone.addEventListener('touchstart', e => { e.preventDefault(); joy.active = true; joyMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  joyZone.addEventListener('touchmove',  e => { e.preventDefault(); joyMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  joyZone.addEventListener('touchend',   e => { e.preventDefault(); joy.active = false; joy.dx = 0; joy.dy = 0; joyThumb.style.transform = 'translate(0,0)'; }, { passive: false });
+  joyZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    joy.active = true;
+    joyMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
 
-  const btnUp = document.getElementById('btnSpeedUp');
+  joyZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    joyMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+
+  joyZone.addEventListener('touchend', e => {
+    e.preventDefault();
+    joy.active = false; joy.dx = 0; joy.dy = 0;
+    joyThumb.style.transform = 'translate(0,0)';
+  }, { passive: false });
+
+  const btnUp   = document.getElementById('btnSpeedUp');
   const btnDown = document.getElementById('btnSpeedDown');
+
   btnUp.addEventListener('touchstart',   e => { e.preventDefault(); touch.speedUp   = true;  }, { passive: false });
   btnUp.addEventListener('touchend',     e => { e.preventDefault(); touch.speedUp   = false; }, { passive: false });
   btnDown.addEventListener('touchstart', e => { e.preventDefault(); touch.speedDown = true;  }, { passive: false });
   btnDown.addEventListener('touchend',   e => { e.preventDefault(); touch.speedDown = false; }, { passive: false });
 
+  // ── Animation loop ──
   let lastTime = performance.now();
 
   viewer.scene.preUpdate.addEventListener(() => {
     const now = performance.now();
-    const dt = Math.min((now - lastTime) / 1000, 0.1);
-    lastTime = now;
-    const TURN = 50, PTCH = 35, ACCEL = 40;
+    const dt  = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime  = now;
 
+    const TURN  = 50;   // deg/s
+    const PTCH  = 35;   // deg/s
+    const ACCEL = 40;   // m/s²
+
+    // Keyboard
     if (keys['ArrowLeft']  || keys['KeyA']) state.heading -= TURN * dt;
     if (keys['ArrowRight'] || keys['KeyD']) state.heading += TURN * dt;
     if (keys['ArrowUp']    || keys['KeyW']) state.pitch = Math.min(state.pitch + PTCH * dt, 50);
     if (keys['ArrowDown']  || keys['KeyS']) state.pitch = Math.max(state.pitch - PTCH * dt, -50);
-    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp) state.speed = Math.min(state.speed + ACCEL * dt, 350);
-    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown) state.speed = Math.max(state.speed - ACCEL * dt, 30);
+    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp)
+      state.speed = Math.min(state.speed + ACCEL * dt, 350);
+    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown)
+      state.speed = Math.max(state.speed - ACCEL * dt, 30);
 
+    // Joystick (mobile)
     if (joy.active) {
       state.heading += TURN * dt * joy.dx;
-      state.pitch = Math.max(-50, Math.min(50, state.pitch + PTCH * dt * (-joy.dy)));
+      const pitchInput = -joy.dy; // screen-up = nose-up
+      state.pitch = Math.max(-50, Math.min(50, state.pitch + PTCH * dt * pitchInput));
     }
 
+    // Auto-level pitch when no input
     const pitchInputActive = keys['ArrowUp'] || keys['KeyW'] || keys['ArrowDown'] || keys['KeyS'] || joy.active;
-    if (!pitchInputActive) { state.pitch *= Math.pow(0.05, dt); if (Math.abs(state.pitch) < 0.05) state.pitch = 0; }
+    if (!pitchInputActive) {
+      state.pitch *= Math.pow(0.05, dt);
+      if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
+    }
 
     state.heading = ((state.heading % 360) + 360) % 360;
 
+    // Position update
     const hRad = Cesium.Math.toRadians(state.heading);
     const pRad = Cesium.Math.toRadians(state.pitch);
-    const dHoriz = state.speed * dt * Math.cos(pRad);
-    const dVert  = state.speed * dt * Math.sin(pRad);
+    const spd  = state.speed;
 
-    state.lon += dHoriz * Math.sin(hRad) / (111320 * Math.cos(Cesium.Math.toRadians(state.lat)));
-    state.lat += dHoriz * Math.cos(hRad) / 111320;
+    const dHoriz = spd * dt * Math.cos(pRad);
+    const dVert  = spd * dt * Math.sin(pRad);
+    const dx = dHoriz * Math.sin(hRad);
+    const dy = dHoriz * Math.cos(hRad);
+
+    const mpDegLat = 111320;
+    const mpDegLon = 111320 * Math.cos(Cesium.Math.toRadians(state.lat));
+
+    state.lon += dx / mpDegLon;
+    state.lat += dy / mpDegLat;
     state.alt  = Math.max(80, Math.min(45000, state.alt + dVert));
 
+    // ── Third-person camera ──
     const pos = Cesium.Cartesian3.fromDegrees(state.lon, state.lat, state.alt);
-    viewer.camera.lookAt(pos, new Cesium.HeadingPitchRange(
-      Cesium.Math.toRadians(state.heading + 180),
-      Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15),
-      Math.min(180 + state.alt * 0.015, 380)
-    ));
 
+    // Camera sits in front of the plane (opposite side workaround for forward movement)
+    const camHeading = Cesium.Math.toRadians(state.heading);
+    const camPitch   = Cesium.Math.toRadians(-14 - Math.abs(state.pitch) * 0.15);
+    const camRange   = Math.min(180 + state.alt * 0.015, 380);
+
+    viewer.camera.lookAt(pos, new Cesium.HeadingPitchRange(camHeading, camPitch, camRange));
+
+    // ── HUD ──
     document.getElementById('altVal').textContent  = Math.round(state.alt).toLocaleString();
     document.getElementById('spdVal').textContent  = Math.round(state.speed * 3.6);
     document.getElementById('hdgVal').textContent  = String(Math.round(state.heading)).padStart(3, '0');
