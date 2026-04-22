@@ -6,6 +6,8 @@
   <title>3D フライトシミュレーター</title>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -282,6 +284,60 @@
       #mobileControls { display: block; }
       #controls { display: none !important; }
     }
+
+    /* ── Location Picker ── */
+    #locationPicker {
+      position: fixed; inset: 0; z-index: 200;
+      display: none; flex-direction: column; background: #020610;
+    }
+    #locationPickerHeader {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; color: #fff; font-size: 0.88rem;
+      background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    #locationPickerHeader button {
+      background: none; border: none; color: rgba(255,255,255,0.6);
+      font-size: 1.3rem; cursor: pointer; padding: 2px 8px; line-height: 1;
+    }
+    #locationMap { flex: 1; }
+    #locationPickerFooter {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; gap: 12px;
+      background: rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    #locationLabel { color: rgba(255,255,255,0.55); font-size: 0.78rem; flex: 1; }
+    #locationCancelBtn {
+      padding: 10px 18px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2); background: transparent;
+      color: rgba(255,255,255,0.7); font-size: 0.88rem; cursor: pointer;
+    }
+    #locationConfirmBtn {
+      padding: 10px 22px; border-radius: 8px; border: none;
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      color: #fff; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    }
+    #locationConfirmBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Location button – start screen */
+    #locationSelectBtn {
+      width: 100%; padding: 11px; border-radius: 8px; margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.8); font-size: 0.9rem; cursor: pointer;
+      transition: background 0.2s;
+    }
+    #locationSelectBtn:hover { background: rgba(255,255,255,0.13); }
+    #selectedLocationDisplay {
+      font-size: 0.75rem; color: #60a5fa; margin-bottom: 12px; min-height: 1.2em;
+    }
+
+    /* Location button – in-flight */
+    #inflightLocationBtn {
+      position: fixed; top: 16px; right: 16px; z-index: 10; display: none;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+      color: #fff; font-size: 0.82rem; padding: 8px 12px; cursor: pointer;
+      pointer-events: all;
+    }
   </style>
 </head>
 <body>
@@ -296,6 +352,8 @@
       Google Cloud Console で <strong>Map Tiles API</strong> を有効化した<br>API キーが必要です
     </p>
     <input type="text" id="apiKeyInput" placeholder="Google Maps API キーを入力...">
+    <button id="locationSelectBtn" onclick="openLocationPicker('start')">📍 ロケーション選択</button>
+    <div id="selectedLocationDisplay">東京タワー付近（デフォルト）</div>
     <button id="startBtn" onclick="startFlight()">✈ フライト開始</button>
     <div id="errorMsg"></div>
   </div>
@@ -337,6 +395,25 @@
   ←→ : 旋回 &nbsp;|&nbsp; ↑ : 上昇 &nbsp;|&nbsp; ↓ : 降下 &nbsp;|&nbsp; E / Q : 加速 / 減速
 </div>
 
+<!-- Location Picker -->
+<div id="locationPicker">
+  <div id="locationPickerHeader">
+    <span>📍 地図をタップしてスタート地点を選択</span>
+    <button onclick="closeLocationPicker()">✕</button>
+  </div>
+  <div id="locationMap"></div>
+  <div id="locationPickerFooter">
+    <span id="locationLabel">地図をタップして選択</span>
+    <div style="display:flex;gap:8px">
+      <button id="locationCancelBtn" onclick="closeLocationPicker()">キャンセル</button>
+      <button id="locationConfirmBtn" onclick="confirmLocation()" disabled>決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- In-flight location button -->
+<button id="inflightLocationBtn" onclick="openLocationPicker('inflight')">📍 場所を変える</button>
+
 <!-- Mobile Controls -->
 <div id="mobileControls">
   <div id="joystickZone">
@@ -351,6 +428,68 @@
 </div>
 
 <script>
+// ── Location Picker ──
+let startLon = 139.7454;
+let startLat  = 35.6586;
+let pickedLon = null;
+let pickedLat = null;
+let pickerMode = 'start';
+let leafletMap = null;
+let leafletMarker = null;
+let teleportFn = null;
+let flightPaused = false;
+
+function openLocationPicker(mode) {
+  pickerMode = mode || 'start';
+  pickedLon = null;
+  pickedLat = null;
+  document.getElementById('locationPicker').style.display = 'flex';
+  document.getElementById('locationConfirmBtn').disabled = true;
+  document.getElementById('locationLabel').textContent = '地図をタップして選択';
+  if (pickerMode === 'inflight') flightPaused = true;
+
+  setTimeout(() => {
+    if (!leafletMap) {
+      leafletMap = L.map('locationMap').setView([35.6586, 139.7454], 9);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(leafletMap);
+      leafletMap.on('click', e => {
+        pickedLat = e.latlng.lat;
+        pickedLon = e.latlng.lng;
+        if (leafletMarker) {
+          leafletMarker.setLatLng(e.latlng);
+        } else {
+          leafletMarker = L.marker(e.latlng).addTo(leafletMap);
+        }
+        document.getElementById('locationLabel').textContent =
+          `${pickedLat.toFixed(4)}°N, ${pickedLon.toFixed(4)}°E`;
+        document.getElementById('locationConfirmBtn').disabled = false;
+      });
+    } else {
+      leafletMap.invalidateSize();
+    }
+  }, 80);
+}
+
+function closeLocationPicker() {
+  document.getElementById('locationPicker').style.display = 'none';
+  if (pickerMode === 'inflight') flightPaused = false;
+}
+
+function confirmLocation() {
+  if (pickedLon === null) return;
+  if (pickerMode === 'start') {
+    startLon = pickedLon;
+    startLat = pickedLat;
+    document.getElementById('selectedLocationDisplay').textContent =
+      `${pickedLat.toFixed(4)}°N, ${pickedLon.toFixed(4)}°E`;
+  } else if (teleportFn) {
+    teleportFn(pickedLon, pickedLat);
+  }
+  closeLocationPicker();
+}
+
 async function startFlight() {
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   const errEl  = document.getElementById('errorMsg');
@@ -419,14 +558,23 @@ async function startFlight() {
 
   // ── Flight state (Tokyo, 3 km up, heading NE) ──
   const state = {
-    lon:     139.7454,  // near Tokyo Tower
-    lat:     35.6586,
+    lon:     startLon,
+    lat:     startLat,
     alt:     3000,      // metres
     heading: 45,        // degrees (0 = north)
     pitch:   0,         // degrees (positive = nose up)
     speed:   150,       // m/s
     bank:    0,         // degrees (positive = right wing down)
   };
+
+  // Teleport function for in-flight location change
+  teleportFn = (lon, lat) => {
+    state.lon = lon; state.lat = lat;
+    state.alt = 3000; state.heading = 0; state.pitch = 0; state.bank = 0;
+  };
+
+  // Show in-flight location button
+  document.getElementById('inflightLocationBtn').style.display = 'block';
 
   // ── Plane entity (3 boxes: fuselage / wings / tail) ──
   function makePosCb() {
@@ -538,6 +686,7 @@ async function startFlight() {
     const now = performance.now();
     const dt  = Math.min((now - lastTime) / 1000, 0.1);
     lastTime  = now;
+    if (flightPaused) return;
 
     const TURN  = 50;   // deg/s
     const PTCH  = 35;   // deg/s
