@@ -112,6 +112,25 @@
     #startBtn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
     #startBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
+    /* Control mode selector */
+    .ctrl-selector {
+      display: flex; gap: 8px; margin-bottom: 10px;
+    }
+    .ctrl-btn {
+      flex: 1; padding: 10px 8px; border-radius: 8px; font-size: 0.85rem;
+      border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.65); cursor: pointer; transition: all 0.15s;
+    }
+    .ctrl-btn.active {
+      background: rgba(59,130,246,0.3); border-color: #3b82f6; color: #fff;
+    }
+    #tiltStatus {
+      font-size: 0.75rem; min-height: 1.1em; margin-bottom: 10px;
+      color: rgba(255,255,255,0.45);
+    }
+    #tiltStatus.ok  { color: #4ade80; }
+    #tiltStatus.err { color: #f87171; }
+
     #errorMsg {
       color: #f87171;
       font-size: 0.82rem;
@@ -338,12 +357,12 @@
       border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     #compassCanvas { flex: 1; height: 44px; display: block; }
-    #inflightLocationBtn {
+    #inflightLocationBtn, #calibrateBtn {
       border: none; border-left: 1px solid rgba(255,255,255,0.15);
       background: transparent; color: #fff; font-size: 0.8rem;
       padding: 0 14px; cursor: pointer; white-space: nowrap; pointer-events: all;
     }
-    #inflightLocationBtn:active { background: rgba(255,255,255,0.1); }
+    #inflightLocationBtn:active, #calibrateBtn:active { background: rgba(255,255,255,0.1); }
   </style>
 </head>
 <body>
@@ -360,6 +379,11 @@
     <input type="text" id="apiKeyInput" placeholder="Google Maps API キーを入力...">
     <button id="locationSelectBtn" onclick="openLocationPicker('start')">📍 ロケーション選択</button>
     <div id="selectedLocationDisplay">東京タワー付近（デフォルト）</div>
+    <div class="ctrl-selector">
+      <button class="ctrl-btn active" id="modeJoyBtn" onclick="selectControlMode('joystick')">🕹 ジョイスティック</button>
+      <button class="ctrl-btn" id="modeTiltBtn" onclick="selectControlMode('tilt')">📱 傾きセンサー</button>
+    </div>
+    <div id="tiltStatus"></div>
     <button id="startBtn" onclick="startFlight()">✈ フライト開始</button>
     <div id="errorMsg"></div>
   </div>
@@ -420,6 +444,7 @@
 <!-- Compass Bar (in-flight) -->
 <div id="compassBar">
   <canvas id="compassCanvas"></canvas>
+  <button id="calibrateBtn" onclick="calibrateTilt()" style="display:none">🎯 基準</button>
   <button id="inflightLocationBtn" onclick="openLocationPicker('inflight')">📍 場所を変える</button>
 </div>
 
@@ -440,6 +465,51 @@
 // ── Location Picker ──
 let startLon = 139.7454;
 let startLat  = 35.6586;
+let controlMode = 'joystick'; // 'joystick' | 'tilt'
+let tiltCalib = { beta: 0, gamma: 0 };
+let currentTilt = { beta: 0, gamma: 0 };
+
+async function selectControlMode(mode) {
+  const statusEl = document.getElementById('tiltStatus');
+  if (mode === 'tilt') {
+    // iOS requires explicit permission request from user gesture
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') {
+          statusEl.textContent = '傾きセンサーの許可が必要です';
+          statusEl.className = 'err';
+          return;
+        }
+      } catch(e) {
+        statusEl.textContent = '許可の取得に失敗しました';
+        statusEl.className = 'err';
+        return;
+      }
+    }
+    controlMode = 'tilt';
+    statusEl.textContent = '傾きセンサー有効 ✓';
+    statusEl.className = 'ok';
+  } else {
+    controlMode = 'joystick';
+    statusEl.textContent = '';
+    statusEl.className = '';
+  }
+  document.getElementById('modeJoyBtn').classList.toggle('active', mode === 'joystick');
+  document.getElementById('modeTiltBtn').classList.toggle('active', mode === 'tilt');
+}
+
+function calibrateTilt() {
+  tiltCalib.beta  = currentTilt.beta;
+  tiltCalib.gamma = currentTilt.gamma;
+}
+
+window.addEventListener('deviceorientation', e => {
+  currentTilt.beta  = e.beta  || 0;
+  currentTilt.gamma = e.gamma || 0;
+});
+
 let pickedLon = null;
 let pickedLat = null;
 let pickerMode = 'start';
@@ -565,6 +635,14 @@ async function startFlight() {
   document.getElementById('hud').style.display      = 'flex';
   document.getElementById('controls').style.display = 'block';
   document.getElementById('compassBar').style.display = 'flex';
+
+  // Tilt mode UI adjustments
+  if (controlMode === 'tilt') {
+    document.getElementById('joystickZone').style.display = 'none';
+    document.getElementById('calibrateBtn').style.display = 'block';
+    // Calibrate on flight start
+    calibrateTilt();
+  }
 
   // ── Flight state (Tokyo, 3 km up, heading NE) ──
   const state = {
@@ -758,14 +836,24 @@ async function startFlight() {
       state.speed = Math.max(state.speed - ACCEL * dt, 30);
 
     // Joystick (mobile)
-    if (joy.active) {
+    if (controlMode === 'joystick' && joy.active) {
       state.heading += TURN * dt * joy.dx;
       const pitchInput = -joy.dy; // screen-up = nose-up
       state.pitch = Math.max(-50, Math.min(50, state.pitch + PTCH * dt * pitchInput));
     }
 
+    // Tilt sensor
+    if (controlMode === 'tilt') {
+      const tiltLR = currentTilt.gamma - tiltCalib.gamma; // left-right (-90~90)
+      const tiltFB = currentTilt.beta  - tiltCalib.beta;  // front-back (-180~180)
+      state.heading += TURN * dt * Math.max(-1, Math.min(1, tiltLR / 25));
+      const targetPitch = Math.max(-50, Math.min(50, -tiltFB * 1.2));
+      state.pitch += (targetPitch - state.pitch) * Math.min(1, 6 * dt);
+    }
+
     // Auto-level pitch when no input
-    const pitchInputActive = keys['ArrowUp'] || keys['KeyW'] || keys['ArrowDown'] || keys['KeyS'] || joy.active;
+    const pitchInputActive = keys['ArrowUp'] || keys['KeyW'] || keys['ArrowDown'] || keys['KeyS']
+      || (controlMode === 'joystick' && joy.active) || controlMode === 'tilt';
     if (!pitchInputActive) {
       state.pitch *= Math.pow(0.05, dt);
       if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
@@ -774,7 +862,8 @@ async function startFlight() {
     // Bank angle: follows turn input smoothly
     const turnInput = (keys['ArrowRight'] || keys['KeyD'] ? 1 : 0)
                     - (keys['ArrowLeft']  || keys['KeyA'] ? 1 : 0)
-                    + (joy.active ? joy.dx : 0);
+                    + (controlMode === 'joystick' && joy.active ? joy.dx : 0)
+                    + (controlMode === 'tilt' ? Math.max(-1, Math.min(1, (currentTilt.gamma - tiltCalib.gamma) / 25)) : 0);
     const targetBank = Math.max(-40, Math.min(40, turnInput * 40));
     state.bank += (targetBank - state.bank) * Math.min(1, 4 * dt);
 
