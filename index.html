@@ -804,34 +804,27 @@ async function startFlight() {
   }
 
   // Fuselage
-  viewer.entities.add({
+  const eFuselage = viewer.entities.add({
     position:    makePosCb(),
     orientation: makeOrientCb(),
-    box: {
-      dimensions: new Cesium.Cartesian3(6, 48, 5),
-      material:   Cesium.Color.WHITE,
-    }
+    box: { dimensions: new Cesium.Cartesian3(6, 48, 5), material: Cesium.Color.WHITE }
   });
 
   // Wings
-  viewer.entities.add({
+  const eWings = viewer.entities.add({
     position:    makePosCb(),
     orientation: makeOrientCb(),
-    box: {
-      dimensions: new Cesium.Cartesian3(58, 9, 1.5),
-      material:   Cesium.Color.fromCssColorString('#e0e8ff'),
-    }
+    box: { dimensions: new Cesium.Cartesian3(58, 9, 1.5), material: Cesium.Color.fromCssColorString('#e0e8ff') }
   });
 
   // Vertical stabiliser (tail fin)
-  viewer.entities.add({
+  const eTail = viewer.entities.add({
     position:    makePosCb(),
     orientation: makeOrientCb(),
-    box: {
-      dimensions: new Cesium.Cartesian3(1.5, 10, 13),
-      material:   Cesium.Color.WHITE,
-    }
+    box: { dimensions: new Cesium.Cartesian3(1.5, 10, 13), material: Cesium.Color.WHITE }
   });
+
+  const planeEntities = [eFuselage, eWings, eTail];
 
   // ── Keyboard ──
   const keys = {};
@@ -931,7 +924,7 @@ async function startFlight() {
     if (now - groundSampleTime > 1000) {
       groundSampleTime = now;
       const carto = Cesium.Cartographic.fromDegrees(state.lon, state.lat);
-      viewer.scene.sampleHeightMostDetailed([carto]).then(samples => {
+      viewer.scene.sampleHeightMostDetailed([carto], planeEntities).then(samples => {
         if (samples[0]?.height != null) groundHeight = samples[0].height;
       }).catch(() => {});
     }
