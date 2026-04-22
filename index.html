@@ -857,7 +857,7 @@ async function startFlight() {
     }
 
     // Apply inertia: rates ease toward desired values
-    const INERTIA = 2.2;
+    const INERTIA = 0.35;
     state.turnRate  += (desTurn  - state.turnRate)  * Math.min(1, INERTIA * dt);
     state.pitchRate += (desPitch - state.pitchRate) * Math.min(1, INERTIA * dt);
 
