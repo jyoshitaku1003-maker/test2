@@ -440,8 +440,8 @@ async function startFlight() {
         pos,
         new Cesium.HeadingPitchRoll(
           Cesium.Math.toRadians(state.heading),
-          Cesium.Math.toRadians(state.pitch),
-          0
+          0,
+          Cesium.Math.toRadians(state.pitch)
         )
       );
     }, false);
