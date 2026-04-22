@@ -888,12 +888,23 @@ async function startFlight() {
 
   // ── Animation loop ──
   let lastTime = performance.now();
+  let groundHeight = 0;
+  let groundSampleTime = 0;
 
   viewer.scene.preUpdate.addEventListener(() => {
     const now = performance.now();
     const dt  = Math.min((now - lastTime) / 1000, 0.1);
     lastTime  = now;
     if (flightPaused) return;
+
+    // Sample ground height every 500ms
+    if (now - groundSampleTime > 500) {
+      groundSampleTime = now;
+      const carto = Cesium.Cartographic.fromDegrees(state.lon, state.lat);
+      viewer.scene.sampleHeightMostDetailed([carto]).then(samples => {
+        if (samples[0]?.height != null) groundHeight = samples[0].height;
+      }).catch(() => {});
+    }
 
     const TURN  = 25;   // deg/s
     const PTCH  = 35;   // deg/s
@@ -969,8 +980,8 @@ async function startFlight() {
     state.lon += dx / mpDegLon;
     state.lat += dy / mpDegLat;
     const newAlt = state.alt + dVert;
-    if (newAlt < 80 && dVert < 0) { triggerCrash(); return; }
-    state.alt = Math.max(80, Math.min(45000, newAlt));
+    if (newAlt <= groundHeight + 5 && dVert < 0) { triggerCrash(); return; }
+    state.alt = Math.max(groundHeight, Math.min(45000, newAlt));
 
     // Dive acceleration: deeper dive = faster speed gain
     if (state.pitch < 0) {
