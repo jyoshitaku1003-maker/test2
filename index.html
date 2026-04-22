@@ -425,6 +425,7 @@ async function startFlight() {
     heading: 45,        // degrees (0 = north)
     pitch:   0,         // degrees (positive = nose up)
     speed:   150,       // m/s
+    bank:    0,         // degrees (positive = right wing down)
   };
 
   // ── Plane entity (3 boxes: fuselage / wings / tail) ──
@@ -440,7 +441,7 @@ async function startFlight() {
         pos,
         new Cesium.HeadingPitchRoll(
           Cesium.Math.toRadians(state.heading),
-          0,
+          Cesium.Math.toRadians(-state.bank),
           Cesium.Math.toRadians(state.pitch)
         )
       );
@@ -565,6 +566,13 @@ async function startFlight() {
       state.pitch *= Math.pow(0.05, dt);
       if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
     }
+
+    // Bank angle: follows turn input smoothly
+    const turnInput = (keys['ArrowRight'] || keys['KeyD'] ? 1 : 0)
+                    - (keys['ArrowLeft']  || keys['KeyA'] ? 1 : 0)
+                    + (joy.active ? joy.dx : 0);
+    const targetBank = Math.max(-40, Math.min(40, turnInput * 40));
+    state.bank += (targetBank - state.bank) * Math.min(1, 4 * dt);
 
     state.heading = ((state.heading % 360) + 360) % 360;
 
