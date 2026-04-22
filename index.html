@@ -149,7 +149,7 @@
     /* ── HUD ── */
     #hud {
       position: fixed;
-      top: 16px;
+      top: 48px;
       left: 50%;
       transform: translateX(-50%);
       display: none;
@@ -330,14 +330,20 @@
       font-size: 0.75rem; color: #60a5fa; margin-bottom: 12px; min-height: 1.2em;
     }
 
-    /* Location button – in-flight */
-    #inflightLocationBtn {
-      position: fixed; top: 16px; right: 16px; z-index: 10; display: none;
+    /* ── Compass Bar ── */
+    #compassBar {
+      position: fixed; top: 0; left: 0; right: 0; height: 44px;
+      display: none; z-index: 11; align-items: stretch;
       background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
-      color: #fff; font-size: 0.82rem; padding: 8px 12px; cursor: pointer;
-      pointer-events: all;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
+    #compassCanvas { flex: 1; height: 44px; display: block; }
+    #inflightLocationBtn {
+      border: none; border-left: 1px solid rgba(255,255,255,0.15);
+      background: transparent; color: #fff; font-size: 0.8rem;
+      padding: 0 14px; cursor: pointer; white-space: nowrap; pointer-events: all;
+    }
+    #inflightLocationBtn:active { background: rgba(255,255,255,0.1); }
   </style>
 </head>
 <body>
@@ -411,8 +417,11 @@
   </div>
 </div>
 
-<!-- In-flight location button -->
-<button id="inflightLocationBtn" onclick="openLocationPicker('inflight')">📍 場所を変える</button>
+<!-- Compass Bar (in-flight) -->
+<div id="compassBar">
+  <canvas id="compassCanvas"></canvas>
+  <button id="inflightLocationBtn" onclick="openLocationPicker('inflight')">📍 場所を変える</button>
+</div>
 
 <!-- Mobile Controls -->
 <div id="mobileControls">
@@ -555,6 +564,7 @@ async function startFlight() {
   document.getElementById('loading').style.display  = 'none';
   document.getElementById('hud').style.display      = 'flex';
   document.getElementById('controls').style.display = 'block';
+  document.getElementById('compassBar').style.display = 'flex';
 
   // ── Flight state (Tokyo, 3 km up, heading NE) ──
   const state = {
@@ -573,8 +583,53 @@ async function startFlight() {
     state.alt = 3000; state.heading = 0; state.pitch = 0; state.bank = 0;
   };
 
-  // Show in-flight location button
-  document.getElementById('inflightLocationBtn').style.display = 'block';
+  // ── Compass drawing ──
+  const compassCanvas = document.getElementById('compassCanvas');
+  function drawCompass(heading) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = compassCanvas.offsetWidth;
+    const h = compassCanvas.offsetHeight;
+    if (compassCanvas.width !== w * dpr) {
+      compassCanvas.width  = w * dpr;
+      compassCanvas.height = h * dpr;
+    }
+    const ctx = compassCanvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const scale = w / 90; // 90° visible range
+    const cx = w / 2;
+    const labels = {0:'N',45:'NE',90:'E',135:'SE',180:'S',225:'SW',270:'W',315:'NW'};
+
+    for (let i = -50; i <= 50; i++) {
+      const deg = ((Math.round(heading) + i) % 360 + 360) % 360;
+      const x = cx + i * scale;
+      if (x < -10 || x > w + 10) continue;
+
+      if (deg % 45 === 0) {
+        ctx.strokeStyle = deg % 90 === 0 ? '#60a5fa' : 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x, h * 0.12); ctx.lineTo(x, h * 0.62); ctx.stroke();
+        ctx.fillStyle = deg % 90 === 0 ? '#60a5fa' : 'rgba(255,255,255,0.65)';
+        ctx.font = `bold ${deg % 90 === 0 ? 11 : 9}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(labels[deg], x, h * 0.92);
+      } else if (deg % 10 === 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, h * 0.35); ctx.lineTo(x, h * 0.62); ctx.stroke();
+      } else if (deg % 5 === 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, h * 0.5); ctx.lineTo(x, h * 0.62); ctx.stroke();
+      }
+    }
+    // Center indicator triangle
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, 1); ctx.lineTo(cx + 5, 1); ctx.lineTo(cx, 9);
+    ctx.closePath(); ctx.fill();
+  }
 
   // ── Plane entity (3 boxes: fuselage / wings / tail) ──
   function makePosCb() {
@@ -758,6 +813,7 @@ async function startFlight() {
     document.getElementById('hdgVal').textContent  = String(Math.round(state.heading)).padStart(3, '0');
     const p = Math.round(state.pitch);
     document.getElementById('pitchVal').textContent = (p >= 0 ? '+' : '') + p;
+    drawCompass(state.heading);
   });
 }
 </script>
