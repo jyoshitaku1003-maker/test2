@@ -689,6 +689,7 @@ async function startFlight() {
   let tileset;
   try {
     tileset = await Cesium.createGooglePhotorealistic3DTileset();
+    tileset.cacheBytes = 256 * 1024 * 1024; // 256MB
     viewer.scene.primitives.add(tileset);
   } catch (e) {
     document.getElementById('loading').style.display  = 'none';
