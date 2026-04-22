@@ -886,6 +886,34 @@ async function startFlight() {
   btnDown.addEventListener('touchstart', e => { e.preventDefault(); touch.speedDown = true;  }, { passive: false });
   btnDown.addEventListener('touchend',   e => { e.preventDefault(); touch.speedDown = false; }, { passive: false });
 
+  // Vertical swipe for speed (anywhere except joystick zone)
+  let swipeAccel = 0;
+  const swipeTouches = {};
+  document.addEventListener('touchstart', e => {
+    for (const t of e.changedTouches) {
+      const r = joyZone.getBoundingClientRect();
+      if (t.clientX >= r.left && t.clientX <= r.right &&
+          t.clientY >= r.top  && t.clientY <= r.bottom) continue;
+      swipeTouches[t.identifier] = { startX: t.clientX, startY: t.clientY, dir: 0 };
+    }
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    swipeAccel = 0;
+    for (const t of e.changedTouches) {
+      const s = swipeTouches[t.identifier];
+      if (!s) continue;
+      const dy = s.startY - t.clientY;
+      const dx = Math.abs(t.clientX - s.startX);
+      if (!s.dir && Math.abs(dy) > 18 && Math.abs(dy) > dx * 1.5)
+        s.dir = dy > 0 ? 1 : -1;
+      if (s.dir) swipeAccel = s.dir;
+    }
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) delete swipeTouches[t.identifier];
+    if (Object.keys(swipeTouches).length === 0) swipeAccel = 0;
+  }, { passive: true });
+
   // ── Animation loop ──
   let lastTime = performance.now();
   let groundHeight = 0;
@@ -910,9 +938,9 @@ async function startFlight() {
     const PTCH  = 35;   // deg/s
     const ACCEL = 40;   // m/s²
 
-    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp)
+    if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp || swipeAccel > 0)
       state.speed = Math.min(state.speed + ACCEL * dt, 350);
-    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown)
+    if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown || swipeAccel < 0)
       state.speed = Math.max(state.speed - ACCEL * dt, 30);
 
     // Desired turn/pitch rates from all inputs
@@ -984,8 +1012,8 @@ async function startFlight() {
     state.alt = Math.min(45000, newAlt);
 
     // Dive acceleration: deeper dive = faster speed gain
-    if (state.pitch < 0) {
-      const diveRatio = -state.pitch / 50; // 0~1
+    if (state.pitch < -20) {
+      const diveRatio = Math.min(1, (-state.pitch - 20) / 30); // 0 at -20°, 1 at -50°
       state.speed = Math.min(state.speed + diveRatio * 80 * dt, 600);
     }
 
