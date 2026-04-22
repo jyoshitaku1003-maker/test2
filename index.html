@@ -358,10 +358,11 @@
     }
     #compassCanvas { flex: 1; height: 44px; display: block; }
     #inflightLocationBtn, #calibrateBtn {
-      border: none; border-left: 1px solid rgba(255,255,255,0.15);
-      background: transparent; color: #fff; font-size: 0.8rem;
+      border: none; background: transparent; color: #fff; font-size: 0.8rem;
       padding: 0 14px; cursor: pointer; white-space: nowrap; pointer-events: all;
     }
+    #inflightLocationBtn { border-left: 1px solid rgba(255,255,255,0.15); }
+    #calibrateBtn { border-right: 1px solid rgba(255,255,255,0.15); }
     #inflightLocationBtn:active, #calibrateBtn:active { background: rgba(255,255,255,0.1); }
   </style>
 </head>
@@ -443,8 +444,8 @@
 
 <!-- Compass Bar (in-flight) -->
 <div id="compassBar">
-  <canvas id="compassCanvas"></canvas>
   <button id="calibrateBtn" onclick="calibrateTilt()" style="display:none">🎯 基準</button>
+  <canvas id="compassCanvas"></canvas>
   <button id="inflightLocationBtn" onclick="openLocationPicker('inflight')">📍 場所を変える</button>
 </div>
 
