@@ -654,12 +654,15 @@ async function startFlight() {
     pitch:   0,         // degrees (positive = nose up)
     speed:   150,       // m/s
     bank:    0,         // degrees (positive = right wing down)
+    turnRate:  0,       // deg/s (with inertia)
+    pitchRate: 0,       // deg/s (with inertia)
   };
 
   // Teleport function for in-flight location change
   teleportFn = (lon, lat) => {
     state.lon = lon; state.lat = lat;
     state.alt = 3000; state.heading = 0; state.pitch = 0; state.bank = 0;
+    state.turnRate = 0; state.pitchRate = 0;
   };
 
   // ── Compass drawing ──
@@ -826,37 +829,47 @@ async function startFlight() {
     const PTCH  = 35;   // deg/s
     const ACCEL = 40;   // m/s²
 
-    // Keyboard
-    if (keys['ArrowLeft']  || keys['KeyA']) state.heading -= TURN * dt;
-    if (keys['ArrowRight'] || keys['KeyD']) state.heading += TURN * dt;
-    if (keys['ArrowUp']    || keys['KeyW']) state.pitch = Math.min(state.pitch + PTCH * dt, 50);
-    if (keys['ArrowDown']  || keys['KeyS']) state.pitch = Math.max(state.pitch - PTCH * dt, -50);
     if (keys['KeyE'] || keys['Equal'] || keys['NumpadAdd'] || touch.speedUp)
       state.speed = Math.min(state.speed + ACCEL * dt, 350);
     if (keys['KeyQ'] || keys['Minus'] || keys['NumpadSubtract'] || touch.speedDown)
       state.speed = Math.max(state.speed - ACCEL * dt, 30);
 
-    // Joystick (mobile)
+    // Desired turn/pitch rates from all inputs
+    let desTurn  = 0;
+    let desPitch = 0;
+
+    if (keys['ArrowLeft']  || keys['KeyA']) desTurn  -= TURN;
+    if (keys['ArrowRight'] || keys['KeyD']) desTurn  += TURN;
+    if (keys['ArrowUp']    || keys['KeyW']) desPitch += PTCH;
+    if (keys['ArrowDown']  || keys['KeyS']) desPitch -= PTCH;
+
     if (controlMode === 'joystick' && joy.active) {
-      state.heading += TURN * dt * joy.dx;
-      const pitchInput = -joy.dy; // screen-up = nose-up
-      state.pitch = Math.max(-50, Math.min(50, state.pitch + PTCH * dt * pitchInput));
+      desTurn  += TURN * joy.dx;
+      desPitch += PTCH * (-joy.dy);
     }
 
-    // Tilt sensor
     if (controlMode === 'tilt') {
-      const tiltLR = currentTilt.gamma - tiltCalib.gamma; // left-right (-90~90)
-      const tiltFB = currentTilt.beta  - tiltCalib.beta;  // front-back (-180~180)
-      state.heading += TURN * dt * Math.max(-1, Math.min(1, tiltLR / 25));
+      const tiltLR = currentTilt.gamma - tiltCalib.gamma;
+      const tiltFB = currentTilt.beta  - tiltCalib.beta;
+      desTurn  += TURN * Math.max(-1, Math.min(1, tiltLR / 25));
       const targetPitch = Math.max(-50, Math.min(50, tiltFB * 1.2));
-      state.pitch += (targetPitch - state.pitch) * Math.min(1, 6 * dt);
+      desPitch += (targetPitch - state.pitch) * 6; // tilt pitch targets position, not rate
     }
+
+    // Apply inertia: rates ease toward desired values
+    const INERTIA = 2.2;
+    state.turnRate  += (desTurn  - state.turnRate)  * Math.min(1, INERTIA * dt);
+    state.pitchRate += (desPitch - state.pitchRate) * Math.min(1, INERTIA * dt);
+
+    state.heading += state.turnRate  * dt;
+    state.pitch    = Math.max(-50, Math.min(50, state.pitch + state.pitchRate * dt));
 
     // Auto-level pitch when no input
     const pitchInputActive = keys['ArrowUp'] || keys['KeyW'] || keys['ArrowDown'] || keys['KeyS']
       || (controlMode === 'joystick' && joy.active) || controlMode === 'tilt';
     if (!pitchInputActive) {
-      state.pitch *= Math.pow(0.05, dt);
+      state.pitchRate *= Math.pow(0.05, dt);
+      state.pitch     *= Math.pow(0.05, dt);
       if (Math.abs(state.pitch) < 0.05) state.pitch = 0;
     }
 
