@@ -112,6 +112,47 @@
     #startBtn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
     #startBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
+    /* ── Crash Overlay ── */
+    #crashOverlay {
+      position: fixed; inset: 0; z-index: 300;
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+      animation: crashBg 3s forwards;
+    }
+    @keyframes crashBg {
+      0%   { background: rgba(255,200,0,0.85); }
+      25%  { background: rgba(255,80,0,0.7); }
+      100% { background: rgba(0,0,0,0.9); }
+    }
+    .exp-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 6px solid orange;
+      width: 20px; height: 20px;
+      animation: expandRing 1.2s ease-out forwards;
+    }
+    .exp-ring.d1 { animation-delay: 0.15s; border-color: #ff4400; }
+    .exp-ring.d2 { animation-delay: 0.3s;  border-color: #ffcc00; }
+    @keyframes expandRing {
+      0%   { width: 20px; height: 20px; opacity: 1; }
+      100% { width: 600px; height: 600px; opacity: 0; }
+    }
+    #crashText {
+      font-size: 2.8rem; font-weight: 900; color: #fff; z-index: 1;
+      text-shadow: 0 0 40px orange, 0 0 80px #ff4400;
+      animation: crashTextAnim 3s forwards;
+    }
+    @keyframes crashTextAnim {
+      0%   { transform: scale(0.3); opacity: 0; }
+      15%  { transform: scale(1.4); opacity: 1; }
+      70%  { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0; }
+    }
+    #crashSub {
+      color: rgba(255,255,255,0.6); font-size: 0.9rem; z-index: 1;
+      animation: crashTextAnim 3s forwards;
+    }
+
     /* Control mode selector */
     .ctrl-selector {
       display: flex; gap: 8px; margin-bottom: 10px;
@@ -390,6 +431,15 @@
   </div>
 </div>
 
+<!-- Crash Overlay -->
+<div id="crashOverlay">
+  <div class="exp-ring"></div>
+  <div class="exp-ring d1"></div>
+  <div class="exp-ring d2"></div>
+  <div id="crashText">💥 CRASH</div>
+  <div id="crashSub">地面に衝突しました</div>
+</div>
+
 <!-- Loading -->
 <div id="loading">
   <div class="spinner"></div>
@@ -464,6 +514,26 @@
 
 <script>
 // ── Location Picker ──
+// Restore API key after crash reload
+window.addEventListener('load', () => {
+  const saved = sessionStorage.getItem('savedApiKey');
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    sessionStorage.removeItem('savedApiKey');
+  }
+});
+
+let crashed = false;
+function triggerCrash() {
+  if (crashed) return;
+  crashed = true;
+  flightPaused = true;
+  sessionStorage.setItem('savedApiKey', document.getElementById('apiKeyInput').value || '');
+  const overlay = document.getElementById('crashOverlay');
+  overlay.style.display = 'flex';
+  setTimeout(() => location.reload(), 3000);
+}
+
 let startLon = 139.7454;
 let startLat  = 35.6586;
 let controlMode = 'joystick'; // 'joystick' | 'tilt'
@@ -898,7 +968,9 @@ async function startFlight() {
 
     state.lon += dx / mpDegLon;
     state.lat += dy / mpDegLat;
-    state.alt  = Math.max(80, Math.min(45000, state.alt + dVert));
+    const newAlt = state.alt + dVert;
+    if (newAlt < 80 && dVert < 0) { triggerCrash(); return; }
+    state.alt = Math.max(80, Math.min(45000, newAlt));
 
     // Dive acceleration: deeper dive = faster speed gain
     if (state.pitch < 0) {
